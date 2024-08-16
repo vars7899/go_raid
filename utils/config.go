@@ -18,6 +18,7 @@ type Config struct {
 	DiskSuffix	string		`yaml:"disk_suffix"`
 	Rebuild		bool		`yaml:"rebuild"`
 }
+
 func LoadConfig(configPathname string) (*Config, error) {
 	var config Config
 

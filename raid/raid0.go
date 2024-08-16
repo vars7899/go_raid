@@ -2,13 +2,17 @@ package raid
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/vars7899/go_raid/disk"
+	"github.com/vars7899/go_raid/utils"
 )
 
 type RAID0 struct {
 	StripeSize	uint64 				// custom stripe size for each set
 	Disks 		[]*disk.DirDisk		// cluster of disks
+	DataSize	int					// size of data
 }
 func CreateRAID0 (stripeSize int64, disks []*disk.DirDisk) (*RAID0, error) {
 	if stripeSize <= 0 {
@@ -17,6 +21,7 @@ func CreateRAID0 (stripeSize int64, disks []*disk.DirDisk) (*RAID0, error) {
 	return &RAID0{
 		StripeSize: uint64(stripeSize),
 		Disks: disks,
+		DataSize: 0,
 	}, nil
 }
 func (r *RAID0) Write(data []byte) error {
@@ -103,9 +108,39 @@ func (r *RAID0) Read(size uint64) ([]byte, error) {
 	}
 	return result, nil
 }
+func (r *RAID0) BuildData(config *utils.Config){
+	var incomeData []byte;
+	err := readEntryFile(&incomeData, config.InputDir)
+	utils.LogFatal(err)
+
+	r.DataSize = len(incomeData)
+
+	err = r.Write(incomeData)
+	utils.LogFatal(err)
+}
+func (r *RAID0) RebuildData(outputPath string)(error){
+	readData, err := r.Read(uint64(r.DataSize))
+	utils.LogFatal(err)
+
+	fileDir := strings.Split(outputPath, "/")
+	dirPath := strings.Join(fileDir[:len(fileDir) -1], "/")
+
+	if err := os.MkdirAll(dirPath, 0766); err != nil {
+		return err
+	}
+	os.WriteFile(outputPath, readData, 0766)
+	return nil
+}
 func (r *RAID0) isRaid0Valid() error {
 	if len(r.Disks) == 0 {
 		return fmt.Errorf("no disks available")
 	}
+	return nil
+}
+func readEntryFile(readBuffer *[]byte, entryPath string)(error){
+	body, err := os.ReadFile(entryPath)
+	utils.LogFatal(err)
+
+	*readBuffer = body
 	return nil
 }
