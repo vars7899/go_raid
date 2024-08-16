@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/vars7899/go_raid/disk"
 	"github.com/vars7899/go_raid/raid"
@@ -51,14 +52,14 @@ func ReadEntryFile(readBuffer *[]byte, entryPath string)(error){
 	if err != nil {
 		return err
 	}
-
-	// body = bytes.ReplaceAll(body, []byte(" "), []byte("\n"))
-	
 	*readBuffer = body
 	return nil
 }
 func AggregateData(data *[]byte, outputPath string)(error){
-	if err := os.MkdirAll(outputPath, 0766); err != nil {
+	fileDir := strings.Split(outputPath, "/")
+	dirPath := strings.Join(fileDir[:len(fileDir) -1], "/")
+
+	if err := os.MkdirAll(dirPath, 0766); err != nil {
 		return err
 	}
 	os.WriteFile(outputPath, *data, 0766)
@@ -99,7 +100,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to write data: %v", err)
 	}
-	AggregateData(&readData, config.OutputDir)
-	fmt.Printf("Read Data: %s\n", string(readData))
 
+	if config.Rebuild {
+		AggregateData(&readData, config.OutputDir)
+	}
 }
