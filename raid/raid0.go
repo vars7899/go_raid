@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/vars7899/go_raid/disk"
 	"github.com/vars7899/go_raid/utils"
@@ -13,6 +14,7 @@ type RAID0 struct {
 	StripeSize	uint64 				// custom stripe size for each set
 	Disks 		[]*disk.DirDisk		// cluster of disks
 	DataSize	int					// size of data
+	Mux			sync.RWMutex
 }
 func CreateRAID0 (stripeSize int64, disks []*disk.DirDisk) (*RAID0, error) {
 	if stripeSize <= 0 {
@@ -51,7 +53,7 @@ func (r *RAID0) Write(data []byte) error {
 			}
 			start := dataWritten
 			end := dataWritten+toWrite
-			fmt.Printf("disk - %d, offset - %d start - %d, end - %d, %s\n", index, disksOffset[index], start, end, data[start:end])
+			// fmt.Printf("disk - %d, offset - %d start - %d, end - %d, %s\n", index, disksOffset[index], start, end, data[start:end])
 
 			if err := disk.Write(int64(disksOffset[index]), data[start:end]); err != nil {
 				return err
@@ -97,7 +99,7 @@ func (r *RAID0) Read(size uint64) ([]byte, error) {
 			if err != nil {
 				return nil, err
 			}
-			fmt.Println(bt)
+			// fmt.Println(bt)
 			// Copy the data from the buffer into the result
 			copy(result[bytesRead:bytesRead+toRead], bt)
 
