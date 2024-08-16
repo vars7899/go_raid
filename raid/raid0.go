@@ -20,12 +20,13 @@ func CreateRAID0 (stripeSize int64, disks []*disk.DirDisk) (*RAID0, error) {
 	}, nil
 }
 func (r *RAID0) Write(data []byte) error {
+	// check for valid raid disks
+	// only proceed if the raid has valid disks
 	if err := r.isRaid0Valid(); err != nil {
 		return err
 	}
 	
 	numDisks := len(r.Disks)
-
 	dataLen := uint64(len(data))
 	var dataWritten uint64
 
@@ -33,6 +34,7 @@ func (r *RAID0) Write(data []byte) error {
 
 	for dataWritten < dataLen {
 		for index, disk := range r.Disks {
+			// check for data remaining
 			remaining := dataLen - dataWritten
 			if remaining <= 0 {
 				break;
@@ -42,6 +44,7 @@ func (r *RAID0) Write(data []byte) error {
 			if remaining < r.StripeSize {
 				toWrite = remaining
 			} 
+			fmt.Printf("%s\n",data[dataWritten:dataWritten+toWrite])
 
 			if err := disk.Write(int64(disksOffset[index]), data[dataWritten:dataWritten+toWrite]); err != nil {
 				return err

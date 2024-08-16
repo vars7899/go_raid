@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -45,6 +46,18 @@ func CloseAllDisks(disks []*disk.DirDisk) error {
 	return nil
 }
 
+func ReadEntryFile(readBuffer *[]byte, entryPath string)(error){
+	body, err := os.ReadFile(entryPath)
+	if err != nil {
+		return err
+	}
+
+	body = bytes.ReplaceAll(body, []byte(" "), []byte("\n"))
+	
+	*readBuffer = body
+	return nil
+}
+
 func main() {
 	disks, err := GenDisks("raid0", "disk", 2)
 	if err != nil {
@@ -56,15 +69,24 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	data := []byte("123456789")
-	if err := r1.Write(data); err != nil {
-		log.Fatalf("Failed to write data: %v", err)
-	}
-	readData, err := r1.Read(uint64(len(data)))
+
+	var incomeData []byte;
+
+	
+	// data := []byte("123456789")
+	err = ReadEntryFile(&incomeData, "./entryFile.txt")
+	fmt.Printf("\n-length -> %d\n-data ->\n%s\n\n", len(incomeData), incomeData)
 	if err != nil {
+		log.Fatalln(err)
+	}
+	if err := r1.Write(incomeData); err != nil {
 		log.Fatalf("Failed to write data: %v", err)
 	}
-	fmt.Printf("Read Data: %s\n", string(readData))
+	// readData, err := r1.Read(uint64(len(incomeData)))
+	// if err != nil {
+	// 	log.Fatalf("Failed to write data: %v", err)
+	// }
+	// fmt.Printf("Read Data: %s\n", string(readData))
 
 	// // Read data from the disk
 	// readData, err := disk.Read(0, len(data))
