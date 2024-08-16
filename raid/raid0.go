@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	pb "github.com/schollz/progressbar/v3"
 	"github.com/vars7899/go_raid/disk"
 	"github.com/vars7899/go_raid/utils"
 )
@@ -35,33 +36,64 @@ func (r *RAID0) Write(data []byte) error {
 	
 	numDisks := len(r.Disks)
 	dataLen := uint64(len(data))
+
 	var dataWritten uint64
+	var wg sync.WaitGroup
+	
+	errChan := make(chan error, numDisks)
+
+	bar := pb.Default(int64(len(r.Disks)), "○ Building & Pushing data to RAID Partials")
+	defer bar.Finish()
 
 	disksOffset := make([]uint64, numDisks) 
 
+	
 	for dataWritten < dataLen {
 		for index, disk := range r.Disks {
-			// check for data remaining
-			remaining := dataLen - dataWritten
-			if remaining <= 0 {
-				break;
-			}
+			wg.Add(1)
 
-			toWrite := r.StripeSize
-			if remaining < r.StripeSize {
-				toWrite = remaining
-			}
-			start := dataWritten
-			end := dataWritten+toWrite
-			// fmt.Printf("disk - %d, offset - %d start - %d, end - %d, %s\n", index, disksOffset[index], start, end, data[start:end])
+			go func (idx int){
+				defer wg.Done()
+				defer bar.Add(1)
 
-			if err := disk.Write(int64(disksOffset[index]), data[start:end]); err != nil {
-				return err
-			}
-			dataWritten += toWrite
-			disksOffset[index] += toWrite
+				r.Mux.Lock()
+				// check for data remaining
+				remaining := dataLen - dataWritten
+				if remaining <= 0 {
+					r.Mux.Unlock()
+					return;
+				}
+
+				toWrite := r.StripeSize
+				if remaining < r.StripeSize {
+					toWrite = remaining
+				}
+				start := dataWritten
+				end := dataWritten+toWrite
+				// fmt.Printf("disk - %d, offset - %d start - %d, end - %d, %s\n", index, disksOffset[index], start, end, data[start:end])
+	
+				dataWritten += toWrite
+				disksOffset[index] += toWrite
+				r.Mux.Unlock()
+
+				if err := disk.Write(int64(disksOffset[index]), data[start:end]); err != nil {
+					errChan <- err
+				}
+
+			}(index)
+
+
 		}
 	}
+
+	wg.Wait()
+
+	close(errChan)
+	
+	if len(errChan) > 0 {
+		return <-errChan
+	}
+
 	return nil
 }
 func (r *RAID0) Read(size uint64) ([]byte, error) {
