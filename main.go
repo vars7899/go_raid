@@ -7,9 +7,10 @@ import (
 
 	"github.com/vars7899/go_raid/disk"
 	"github.com/vars7899/go_raid/raid"
+	"github.com/vars7899/go_raid/utils"
 )
 
-func GenDisks (basePath string, diskPrefix string, numOfDisks uint) ([]*disk.DirDisk, error) {
+func GenDisks (basePath string, diskPrefix string, diskSuffix string, numOfDisks uint) ([]*disk.DirDisk, error) {
 	_, err := os.Stat(basePath)
 	// if file does not exists, create a new directory
 	if err == nil {
@@ -20,12 +21,12 @@ func GenDisks (basePath string, diskPrefix string, numOfDisks uint) ([]*disk.Dir
 		}
 	}
 	fmt.Printf("creating %s\n", basePath)
-	if err := os.Mkdir(basePath, 0766); err != nil {
+	if err := os.MkdirAll(basePath, 0766); err != nil {
 			return nil, err
 	}
 	var disks []*disk.DirDisk
 	for index := range numOfDisks {
-		diskName := fmt.Sprintf("%s/%s%d.bin", basePath, diskPrefix, index)
+		diskName := fmt.Sprintf("%s/%s%d%s.bin", basePath, diskPrefix, index, diskSuffix)
 		fmt.Println(diskName)
 		disk, err := disk.GenNewDirDisk(diskName)
 		if err != nil {
@@ -57,27 +58,36 @@ func ReadEntryFile(readBuffer *[]byte, entryPath string)(error){
 	return nil
 }
 func AggregateData(data *[]byte, outputPath string)(error){
+	if err := os.MkdirAll(outputPath, 0766); err != nil {
+		return err
+	}
 	os.WriteFile(outputPath, *data, 0766)
 	return nil
 }
-
+func LoadConfiguration(configPath string) *utils.Config{
+	config, err := utils.LoadConfig(configPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return config
+}
 func main() {
-	disks, err := GenDisks("raid0", "disk", 2)
+	config := LoadConfiguration("config.yaml")
+
+	disks, err := GenDisks(config.SegmentDir, config.DiskPrefix, config.DiskSuffix, config.DiskCount)
 	if err != nil {
 		log.Fatalln(err)
 	}
 	defer CloseAllDisks(disks)
 
-	r1 , err := raid.CreateRAID0(4, disks)
+	r1 , err := raid.CreateRAID0(int64(config.StripeSize), disks)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	var incomeData []byte;
 
-	
-	// data := []byte("123456789")
-	err = ReadEntryFile(&incomeData, "./entryFile.txt")
+	err = ReadEntryFile(&incomeData, config.InputDir)
 	fmt.Printf("\n-length -> %d\n-data ->\n%s\n\n", len(incomeData), incomeData)
 	if err != nil {
 		log.Fatalln(err)
@@ -89,13 +99,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to write data: %v", err)
 	}
-	AggregateData(&readData, "output.txt")
+	AggregateData(&readData, config.OutputDir)
 	fmt.Printf("Read Data: %s\n", string(readData))
 
-	// // Read data from the disk
-	// readData, err := disk.Read(0, len(data))
-	// if err != nil {
-	// 	log.Fatalf("Failed to read data: %v", err)
-	// }
-	// fmt.Printf("Read Data: %s\n", string(readData))
 }

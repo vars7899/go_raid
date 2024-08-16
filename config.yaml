@@ -1,0 +1,12 @@
+# raid level settings
+level: 0
+# disks settings
+disk_count: 4
+stripe_size: 4
+# Disk Settings
+disk_prefix: "disk_"
+disk_suffix: "_prt"
+
+input_dir: "example/src/main.json"
+segment_dir: "example/prt"
+output_dir: "example/dst/main.json"
