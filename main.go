@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -26,7 +25,7 @@ func GenDisks (basePath string, diskPrefix string, numOfDisks uint) ([]*disk.Dir
 	}
 	var disks []*disk.DirDisk
 	for index := range numOfDisks {
-		diskName := fmt.Sprintf("%s/%s%d.txt", basePath, diskPrefix, index)
+		diskName := fmt.Sprintf("%s/%s%d.bin", basePath, diskPrefix, index)
 		fmt.Println(diskName)
 		disk, err := disk.GenNewDirDisk(diskName)
 		if err != nil {
@@ -52,9 +51,13 @@ func ReadEntryFile(readBuffer *[]byte, entryPath string)(error){
 		return err
 	}
 
-	body = bytes.ReplaceAll(body, []byte(" "), []byte("\n"))
+	// body = bytes.ReplaceAll(body, []byte(" "), []byte("\n"))
 	
 	*readBuffer = body
+	return nil
+}
+func AggregateData(data *[]byte, outputPath string)(error){
+	os.WriteFile(outputPath, *data, 0766)
 	return nil
 }
 
@@ -82,11 +85,12 @@ func main() {
 	if err := r1.Write(incomeData); err != nil {
 		log.Fatalf("Failed to write data: %v", err)
 	}
-	// readData, err := r1.Read(uint64(len(incomeData)))
-	// if err != nil {
-	// 	log.Fatalf("Failed to write data: %v", err)
-	// }
-	// fmt.Printf("Read Data: %s\n", string(readData))
+	readData, err := r1.Read(uint64(len(incomeData)))
+	if err != nil {
+		log.Fatalf("Failed to write data: %v", err)
+	}
+	AggregateData(&readData, "output.txt")
+	fmt.Printf("Read Data: %s\n", string(readData))
 
 	// // Read data from the disk
 	// readData, err := disk.Read(0, len(data))

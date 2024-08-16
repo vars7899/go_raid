@@ -43,14 +43,16 @@ func (r *RAID0) Write(data []byte) error {
 			toWrite := r.StripeSize
 			if remaining < r.StripeSize {
 				toWrite = remaining
-			} 
-			fmt.Printf("%s\n",data[dataWritten:dataWritten+toWrite])
+			}
+			start := dataWritten
+			end := dataWritten+toWrite
+			fmt.Printf("disk - %d, offset - %d start - %d, end - %d, %s\n", index, disksOffset[index], start, end, data[start:end])
 
-			if err := disk.Write(int64(disksOffset[index]), data[dataWritten:dataWritten+toWrite]); err != nil {
+			if err := disk.Write(int64(disksOffset[index]), data[start:end]); err != nil {
 				return err
 			}
 			dataWritten += toWrite
-			disksOffset[index] = toWrite
+			disksOffset[index] += toWrite
 		}
 	}
 	return nil
